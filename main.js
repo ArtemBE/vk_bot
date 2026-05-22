@@ -53,6 +53,6 @@ app.get('/channelVideo', (req, res)=>{
   yth.getChannelVideos('UCmSImlPUez2i1wvsctTB0Gw', 5).then(data=>console.log(data) || res.json(data))
 })
 
-app.listen(process.env.PORT, () => {
-  console.log(`Сервер запущен на http://localhost:${port}`);
+app.listen(process.env.PORT, process.env.IP, () => {
+  console.log(`Сервер запущен на http://${process.env.IP}:${port}`);
 });
