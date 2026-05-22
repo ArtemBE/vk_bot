@@ -1,5 +1,6 @@
 console.log(343);
 
+require('dotenv').config();
 const axios = require('axios');
 const fs = require('fs');
 const { YtDlp } = require('ytdlp-nodejs');
@@ -8,9 +9,8 @@ const { createWriteStream } = require('fs');
 const express = require('express')
 const app = express();
 const port = 3000;
-const { YTHandler } = require('../bot/src/Handler.js')
+const { YTHandler } = require(process.env.DIRECTORY+'/src/Handler.js')
 const yth = new YTHandler();
-require('dotenv').config();
 
 
 const youtube = require('googleapis').google.youtube({

@@ -16,7 +16,7 @@ class YTHandler{
         .filter('mergevideo')
         .quality('1080p')
         .type('mp4')
-        .output('/home/artem/Projects/vk_bot/bot/src/videos')
+        .output(process.env.DIRECTORY+'/src/videos')
         .on('progress', (p) => console.log(`${p.percentage_str}`))
 /*         .on('finish', ()=>{console.log(343434)})
         .on('error', e=>{console.log(e.message)}) */
