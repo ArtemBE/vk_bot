@@ -4,6 +4,7 @@ const { YtDlp } = require('ytdlp-nodejs');
 const ytdlp = new YtDlp();
 const { createWriteStream } = require('fs');
 require('dotenv').config();
+const {Keyboard} = require('vk-io')
 const youtube = require('googleapis').google.youtube({
     version: 'v3',
     auth: process.env.API_KEY,
@@ -80,6 +81,40 @@ class YTHandler{
             order: order,
         })
         return responce.data;
+    }
+    async handleMessage(body){
+        const userMessage = body.object.message.text;
+        const userId = body.object.message.from_id;
+        const peerId = body.object.message.peer_id;
+        const kb = Keyboard.builder()
+        .textButton({
+            label: '📸 Фото',
+        })
+        .textButton({
+            label: '🎵 Музыка',
+        }).inline(false) // false - обычная клавиатура (всегда видна)
+        .toString();
+        console.log(kb)
+        console.log(userMessage);
+        
+        if(userMessage=="Клава"){
+            const reply = {
+                peer_id: peerId,
+                message: `Привет! Пока что я отвечаю только стандартным текстом. ${userId}`,
+                random_id: Math.floor(Math.random() * 1000000), // Уникальный ID для избежания дублей
+                keyboard: kb
+            }
+            return reply;
+        }
+        else{
+            const reply = {
+                peer_id: peerId,
+                message: `Привет! Пока что я отвечаю только стандартным текстом. ${userId}`,
+                random_id: Math.floor(Math.random() * 1000000), // Уникальный ID для избежания дублей
+                /* keyboard: kb */
+            }
+            return reply;
+        }
     }
 }
 

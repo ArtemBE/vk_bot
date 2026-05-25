@@ -19,6 +19,8 @@ const youtube = require('googleapis').google.youtube({
     auth: process.env.API_KEY,
 });
 
+app.use(express.json());
+
 app.get('/', (req, res)=>{
   res.send("<h1 style='color: red'>Пошел нахуй</h1>")
 })
@@ -27,20 +29,9 @@ app.post('/vk/callback', (req, res)=>{
   if(req.body.type=="confirmation" && req.body.group_id==238469614)
     res.send("cc3397de")
   if(req.body.type === 'message_new') {
-    const userMessage = req.body.object.message.text;
-    const userId = req.body.object.message.from_id;
-    const peerId = req.body.object.message.peer_id;
-    console.log(userMessage);
-    try{
-      vk.api.messages.send({
-        peer_id: peerId,
-        message: "Привет! Пока что я отвечаю только стандартным текстом.",
-        random_id: Math.floor(Math.random() * 1000000) // Уникальный ID для избежания дублей
-      });
-    }
-    catch(e){
-      console.log(e.message);
-    }
+    yth.handleMessage(req.body)
+    .then(vk.api.reply.send/* console.log */)
+    .catch(e=>console.log(e.message));
     res.send('ok');
   }
 })
