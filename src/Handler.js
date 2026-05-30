@@ -85,40 +85,6 @@ class YTHandler{
         })
         return responce.data;
     }
-    async handleMessage(body){
-        const userMessage = body.object.message.text;
-        const userId = body.object.message.from_id;
-        const peerId = body.object.message.peer_id;
-        const kb = Keyboard.builder()
-        .textButton({
-            label: '📸 Фото',
-        })
-        .textButton({
-            label: '🎵 Музыка',
-        }).inline(false) // false - обычная клавиатура (всегда видна)
-        .toString();
-        console.log(kb)
-        console.log(userMessage);
-        
-        if(userMessage=="Клава"){
-            const reply = {
-                peer_id: peerId,
-                message: `Привет! Пока что я отвечаю только стандартным текстом. ${userId}`,
-                random_id: Date.now(), 
-                keyboard: kb
-            }
-            return reply;
-        }
-        else{
-            const reply = {
-                peer_id: peerId,
-                message: `Привет! Пока что я отвечаю только стандартным текстом. ${userId}`,
-                random_id: Date.now(), 
-                /* keyboard: kb */
-            }
-            return reply;
-        }
-    }
 }
 
 class VKHandler{
@@ -129,7 +95,7 @@ class VKHandler{
         const reply = {
             peer_id: msg.peer_id,
             message: `Ошибка: ${message}`,
-            random_id: Date.now(), 
+            random_id: Math.floor(Math.random() * 1000000), 
         }
         return reply;
     }
@@ -142,7 +108,7 @@ class VKHandler{
         const reply = {
             peer_id: msg.peer_id,
             message: `Выберите сервис ${msg.from_id}`,
-            random_id: Date.now(), 
+            random_id: Math.floor(Math.random() * 1000000), 
             keyboard: kb
         }
         return reply;
@@ -166,7 +132,7 @@ class VKHandler{
         const reply = {
             peer_id: msg.peer_id,
             message: `Выберите действие`,
-            random_id: Date.now(), 
+            random_id: Math.floor(Math.random() * 1000000), 
             keyboard: kb
         }
         return reply;
@@ -185,7 +151,7 @@ class VKHandler{
         const reply = {
             peer_id: msg.peer_id,
             message: `Введите ${oper=="search"?"запрос":"ссылку"}`,
-            random_id: Date.now(), 
+            random_id: Math.floor(Math.random() * 1000000), 
             keyboard: kb
         }
         return reply;
@@ -204,7 +170,7 @@ class VKHandler{
 
     async handleMessage(body){
         const msg = body.object.message;
-        const payload = msg.payload?json.Parse(msg.payload):null;
+        const payload = msg.payload??null;
         const user = saver.getUserByIdSync(body.peer_id);
         const kb = Keyboard.builder()
         .textButton({
@@ -224,34 +190,40 @@ class VKHandler{
             const reply = {
                 peer_id: msg.peer_id,
                 message: `Привет! Пока что я отвечаю только стандартным текстом. ${msg.from_id}`,
-                random_id: Date.now(), 
+                random_id: Math.floor(Math.random() * 1000000), 
                 keyboard: kb
             }
             return reply;
         }
         else if(payload.command=="restart"){
             const reply = this.selectServiceInterface(body);
+            return reply;
         }
         else if(["начать", "начало"].includes(msg.text.toLowerCase())){
             const reply = this.selectServiceInterface(body);
+            return reply;
         }
         else if(payload && payload.command=="selectService" && payload.item=="youtube"){
             const reply = this.ytSelectOperationInterface(body, payload.operation, payload.item);
+            return reply;
         }
         else if(payload.command=="ytSelectOperation"){
             const reply = this.ytInputQueryInterface(body, payload.operation, payload.item);
+            return reply;
         }
         else if(payload.command=="ytInputQuery" && user.operation=="search"){
             const reply = await this.ytExecuteSearch(body, user.item);
+            return reply;
         }
         else if(payload.command=="ytInputQuery" && user.operation=="get"){
             const reply = await this.ytExecuteGet(body, user.item);
+            return reply;
         }
         else{
             const reply = {
                 peer_id: msg.peer_id,
                 message: `Привет! Пока что я отвечаю только стандартным текстом. ${msg.from_id}`,
-                random_id: Date.now(), 
+                random_id: Math.floor(Math.random() * 1000000), 
                 /* keyboard: kb */
             }
             return reply;

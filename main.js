@@ -38,6 +38,7 @@ app.post('/vk/callback', (req, res)=>{
     .catch(e=>{
       vk.api.messages.send(e.message);
       /* console.log(e.message); */
+      //throw e;
     });
     res.send('ok');
   }
