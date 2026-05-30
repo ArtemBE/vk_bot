@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 
-const usersDir = path.join(__dirname, 'data', 'users');
+const usersDir = path.join(process.env.DIRECTORY, 'data', 'users');
 
 class DataSaver{
     ensureDir() {
@@ -11,11 +11,10 @@ class DataSaver{
         }
     }
     createUserSync(userData) {
-        ensureDir();
-        const id = Date.now();
-        const user = { id, ...userData, createdAt: new Date().toISOString() };
-        fs.writeFileSync(path.join(usersDir, `${id}.json`), JSON.stringify(user, null, 2));
-        return user;
+        this.ensureDir();
+        const id = userData.id;
+        fs.writeFileSync(path.join(usersDir, `${id}.json`), JSON.stringify(userData, null, 2));
+        return userData;
     }
     getUserByIdSync(id) {
         const filePath = path.join(usersDir, `${id}.json`);
@@ -24,3 +23,4 @@ class DataSaver{
         return JSON.parse(content);
     }
 }
+module.exports={DataSaver}

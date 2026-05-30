@@ -4,3 +4,4 @@ class User{
         this.state=state;
     }
 }
+module.exports={User}

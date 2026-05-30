@@ -9,10 +9,14 @@ const { createWriteStream } = require('fs');
 const express = require('express')
 const app = express();
 const port = 3000;
-const { YTHandler } = require(process.env.DIRECTORY+'/src/Handler.js')
+const { YTHandler, VKHandler } = require(process.env.DIRECTORY+'/src/Handler.js')
 const yth = new YTHandler();
+const vkh = new VKHandler();
 const {VK} = require('vk-io')
 const vk = new VK({ token: process.env.VK_TOKEN });
+const {User}=require(process.env.DIRECTORY+"/src/User.js")
+const {DataSaver} = require(process.env.DIRECTORY+"/src/DataSaver.js")
+const saver = new DataSaver();
 
 const youtube = require('googleapis').google.youtube({
     version: 'v3',
@@ -29,9 +33,12 @@ app.post('/vk/callback', (req, res)=>{
   if(req.body.type=="confirmation" && req.body.group_id==238469614)
     res.send("cc3397de")
   if(req.body.type === 'message_new') {
-    yth.handleMessage(req.body)
-    .then(vk.api.reply.send/* console.log */)
-    .catch(e=>console.log(e.message));
+    vkh.handleMessage(req.body)
+    .then(vk.api.messages.send/* console.log */)
+    .catch(e=>{
+      vk.api.messages.send(e.message);
+      /* console.log(e.message); */
+    });
     res.send('ok');
   }
 })
@@ -58,6 +65,11 @@ app.get('/list', (req, res)=>{
 
 app.get('/info', (req, res)=>{
   yth.getVideoInfo('r6JyVyUxgBs').then(data=>console.log(data) || res.json(data))
+})
+app.get('/user', (req, res)=>{
+  const user = new User(123, "state2");
+  saver.createUserSync(user);
+  res.send(244433)
 })
 app.get('/channelInfo', (req, res)=>{
   yth.getChannelInfo('UCmSImlPUez2i1wvsctTB0Gw').then(data=>console.log(data) || res.json(data))
