@@ -4,13 +4,15 @@ const { YtDlp } = require('ytdlp-nodejs');
 const ytdlp = new YtDlp();
 const { createWriteStream } = require('fs');
 require('dotenv').config();
-const {Keyboard} = require('vk-io');
+const { Keyboard, VK } = require('vk-io');
 const { DataSaver } = require('./DataSaver');
 const { User } = require('./User');
+const { extractID } = require('./../utils/ExtractID');
 const youtube = require('googleapis').google.youtube({
     version: 'v3',
     auth: process.env.API_KEY,
 });
+const vk = new VK({ token: process.env.VK_TOKEN });
 const saver = new DataSaver();
 
 class YTHandler{
@@ -101,7 +103,7 @@ class VKHandler{
     }
     selectServiceInterface(body){
         const msg = body.object.message;
-        saver.createUserSync({id: body.peer_id, state: "selectService"})
+        saver.createUserSync({id: msg.peer_id, state: "selectService"})
         const kb = Keyboard.builder()
         .textButton({label: "youtube", payload: {command: "selectService", item: "youtube"}})
         .inline(false).toString();
@@ -115,7 +117,7 @@ class VKHandler{
     }
     ytSelectOperationInterface(body){
         const msg = body.object.message;
-        saver.createUserSync({id: body.peer_id, state: `ytSelectOperation`})
+        saver.createUserSync({id: msg.peer_id, state: `ytSelectOperation`})
         const kb = Keyboard.builder()
         .textButton({label: "Найти видео", payload: 
             {command: "ytSelectOperation", operation: "search", item: "video"}})
@@ -140,7 +142,7 @@ class VKHandler{
     ytInputQueryInterface(body, oper, item){
         const msg = body.object.message;
         saver.createUserSync({
-            id: body.peer_id, 
+            id: msg.peer_id, 
             state: `ytInputQuery`,
             operation: oper,
             item: item,
@@ -159,19 +161,45 @@ class VKHandler{
     async ytExecuteSearch(body, item){
         const msg = body.object.message;
         const list = await this.yth.getList(msg.text, 10, item);
-        return list;
+        const kb = Keyboard.builder()
+        .textButton({label: "Перезапуск", payload: {command: "restart"}})
+        .inline(false).toString();
+        const reply = {
+            peer_id: msg.peer_id,
+            message: typeof(list)==typeof("ds")?list:JSON.stringify(list),
+            random_id: Math.floor(Math.random() * 1000000), 
+            keyboard: kb
+        }
+        return reply;
     }
     async ytExecuteGet(body, item){
         const msg = body.object.message;
-        const video_id = new URL(msg.text).searchParams.get('v');
+        const video_id = extractID(msg.text);
         const list = await this.yth.getVideoInfo(video_id);
-        return list;
+        const kb = Keyboard.builder()
+        .textButton({label: "Перезапуск", payload: {command: "restart"}})
+        .inline(false).toString();
+	console.log(list.snippet.thumbnails.high.url);
+	const attachment = await vk.upload.messagePhoto({
+            source: {value: list.snippet.thumbnails.high.url}
+        });
+        const reply = {
+            peer_id: msg.peer_id,
+            message: `Название: ${list.snippet.title}\n`+
+            `Канал: ${list.snippet.channelTitle}\n`+
+            `Дата публикации: ${list.snippet.publishedAt}`,
+	    attachment: attachment,
+            random_id: Math.floor(Math.random() * 1000000), 
+            keyboard: kb
+        }
+        return reply;
     }
 
     async handleMessage(body){
+	//console.log(2)
         const msg = body.object.message;
-        const payload = msg.payload??null;
-        const user = saver.getUserByIdSync(body.peer_id);
+        const payload = msg.payload?JSON.parse(msg.payload):null;
+        const user = saver.getUserByIdSync(msg.peer_id);
         const kb = Keyboard.builder()
         .textButton({
             label: '📸 Фото',
@@ -183,9 +211,7 @@ class VKHandler{
             label: '🎵 Музыка',
         }).inline(false) // false - обычная клавиатура (всегда видна)
         .toString();
-        console.log(kb)
-        console.log(msg.text);
-        
+        console.log(payload);
         if(msg.text=="Клава"){
             const reply = {
                 peer_id: msg.peer_id,
@@ -195,7 +221,7 @@ class VKHandler{
             }
             return reply;
         }
-        else if(payload.command=="restart"){
+        else if(payload?.command=="restart"){
             const reply = this.selectServiceInterface(body);
             return reply;
         }
@@ -207,25 +233,27 @@ class VKHandler{
             const reply = this.ytSelectOperationInterface(body, payload.operation, payload.item);
             return reply;
         }
-        else if(payload.command=="ytSelectOperation"){
+        else if(payload?.command=="ytSelectOperation"){
             const reply = this.ytInputQueryInterface(body, payload.operation, payload.item);
             return reply;
         }
-        else if(payload.command=="ytInputQuery" && user.operation=="search"){
+        else if(user.state=="ytInputQuery" && user.operation=="search"){
             const reply = await this.ytExecuteSearch(body, user.item);
             return reply;
         }
-        else if(payload.command=="ytInputQuery" && user.operation=="get"){
+        else if(user.state=="ytInputQuery" && user.operation=="get"){
             const reply = await this.ytExecuteGet(body, user.item);
             return reply;
         }
         else{
+	    //console.log(4)
             const reply = {
                 peer_id: msg.peer_id,
                 message: `Привет! Пока что я отвечаю только стандартным текстом. ${msg.from_id}`,
                 random_id: Math.floor(Math.random() * 1000000), 
                 /* keyboard: kb */
             }
+	    //console.log(5);
             return reply;
         }
     }
