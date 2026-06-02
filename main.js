@@ -31,14 +31,18 @@ app.get('/', (req, res)=>{
 
 app.post('/vk/callback', (req, res)=>{
   if(req.body.type=="confirmation" && req.body.group_id==238469614)
-    res.send("cc3397de")
+    res.send("af4e92c9")
   if(req.body.type === 'message_new') {
+    console.log("Текст: "+req.body.object.message.text)
     vkh.handleMessage(req.body)
-    .then(vk.api.messages.send/* console.log */)
+    .then(r=>{
+      if(r.user) saver.createUserSync(r.user);
+      vk.api.messages.send(r.reply)
+      .catch(e=>vk.api.messages.send(vkh.reportError("Некорректные данные", req.body.object.message.peer_id)))
+    })
     .catch(e=>{
-      vk.api.messages.send(e.message);
-      /* console.log(e.message); */
-      throw e;
+      vk.api.messages.send(vkh.reportError(e.message, req.body.object.message.peer_id));
+      //throw e;
     });
     res.send('ok');
   }

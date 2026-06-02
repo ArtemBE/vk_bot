@@ -14,6 +14,7 @@ const youtube = require('googleapis').google.youtube({
 });
 const vk = new VK({ token: process.env.VK_TOKEN });
 const saver = new DataSaver();
+//Проверка
 
 class YTHandler{
     async download(url){
@@ -29,15 +30,20 @@ class YTHandler{
         .run();
         return result;
     }
-    async pipeload(url){
-        const result = await ytdlp
-        .stream(url)
-        .filter('audioandvideo')
-        .quality('1080p')
-        .type('mp4')
-        .on('progress', (p) => console.log(`${p.percentage_str}`))
-        .pipeAsync(createWriteStream('video.mp4'));
-        return result;
+    async pipeload(url, stream=process.env.DIRECTORY+"/data/videos/video.mp4"){
+        try{
+            const result = await ytdlp
+            .stream(url)
+            .filter('audioandvideo')
+            .quality('1080p')
+            .type('mp4')
+            .on('progress', (p) => console.log(`${p.percentage_str}`))
+            .pipeAsync(createWriteStream(stream));
+            return result;
+        }
+        catch(e){
+            throw new Error("Ошибка загрузки видео");
+        }
     }
     async getList(query, maxResults=10, type="video"){
 /*         const request = `GET https://www.googleapis.com/youtube/v3/search?`+
@@ -59,8 +65,7 @@ class YTHandler{
             const responce = await youtube.search.list(params)
             return responce.data;
         } catch(e){
-            console.log("Вот такая ошибка: " + e.message)
-            console.log("Вот такой ответ: " + e.responce?.data)
+            throw new Error("Ошибка поиска");
         }
     }
     async getVideoInfo(id){
@@ -93,31 +98,33 @@ class VKHandler{
     constructor(){
         this.yth=new YTHandler();
     }
-    reportError(message){
+    reportError(message, peer_id){
         const reply = {
-            peer_id: msg.peer_id,
+            peer_id: peer_id,
             message: `Ошибка: ${message}`,
-            random_id: Math.floor(Math.random() * 1000000), 
+            random_id: Date.now(), 
         }
         return reply;
     }
     selectServiceInterface(body){
         const msg = body.object.message;
-        saver.createUserSync({id: msg.peer_id, state: "selectService"})
+        const user = {id: msg.peer_id, state: "selectService"};
+        //saver.createUserSync(user)
         const kb = Keyboard.builder()
         .textButton({label: "youtube", payload: {command: "selectService", item: "youtube"}})
         .inline(false).toString();
         const reply = {
             peer_id: msg.peer_id,
             message: `Выберите сервис ${msg.from_id}`,
-            random_id: Math.floor(Math.random() * 1000000), 
+            random_id: Date.now(), 
             keyboard: kb
         }
-        return reply;
+        return {reply, user};
     }
     ytSelectOperationInterface(body){
         const msg = body.object.message;
-        saver.createUserSync({id: msg.peer_id, state: `ytSelectOperation`})
+        const user = {id: msg.peer_id, state: `ytSelectOperation`};
+        //saver.createUserSync(user)
         const kb = Keyboard.builder()
         .textButton({label: "Найти видео", payload: 
             {command: "ytSelectOperation", operation: "search", item: "video"}})
@@ -134,29 +141,30 @@ class VKHandler{
         const reply = {
             peer_id: msg.peer_id,
             message: `Выберите действие`,
-            random_id: Math.floor(Math.random() * 1000000), 
+            random_id: Date.now(), 
             keyboard: kb
         }
-        return reply;
+        return {reply, user};
     }
     ytInputQueryInterface(body, oper, item){
         const msg = body.object.message;
-        saver.createUserSync({
+        const user = {
             id: msg.peer_id, 
             state: `ytInputQuery`,
             operation: oper,
             item: item,
-        })
+        }
+        //saver.createUserSync(user)
         const kb = Keyboard.builder()
         .textButton({label: "Перезапуск", payload: {command: "restart"}})
         .inline(false).toString();
         const reply = {
             peer_id: msg.peer_id,
             message: `Введите ${oper=="search"?"запрос":"ссылку"}`,
-            random_id: Math.floor(Math.random() * 1000000), 
+            random_id: Date.now(), 
             keyboard: kb
         }
-        return reply;
+        return {reply, user};
     }
     async ytExecuteSearch(body, item){
         const msg = body.object.message;
@@ -166,21 +174,25 @@ class VKHandler{
         .inline(false).toString();
         const reply = {
             peer_id: msg.peer_id,
-            message: typeof(list)==typeof("ds")?list:JSON.stringify(list),
-            random_id: Math.floor(Math.random() * 1000000), 
+            message: JSON.stringify(list, null, 2),
+            random_id: Date.now(), 
             keyboard: kb
         }
-        return reply;
+        return {reply};
     }
     async ytExecuteGet(body, item){
         const msg = body.object.message;
         const video_id = extractID(msg.text);
         const list = await this.yth.getVideoInfo(video_id);
+        const user = {id: msg.peer_id, state: `ytVideo`, ytVideoID: video_id};
+        //saver.createUserSync(user)
         const kb = Keyboard.builder()
+        .textButton({label: "Скачать", payload: {command: "ytDownloadVideo"}})
+        .row()
         .textButton({label: "Перезапуск", payload: {command: "restart"}})
         .inline(false).toString();
-	console.log(list.snippet.thumbnails.high.url);
-	const attachment = await vk.upload.messagePhoto({
+	    //console.log(list.snippet.thumbnails.high.url);
+	    const attachment = await vk.upload.messagePhoto({
             source: {value: list.snippet.thumbnails.high.url}
         });
         const reply = {
@@ -188,15 +200,32 @@ class VKHandler{
             message: `Название: ${list.snippet.title}\n`+
             `Канал: ${list.snippet.channelTitle}\n`+
             `Дата публикации: ${list.snippet.publishedAt}`,
-	    attachment: attachment,
-            random_id: Math.floor(Math.random() * 1000000), 
+	        attachment: attachment,
+            random_id: Date.now(), 
             keyboard: kb
         }
-        return reply;
+        return {reply, user};
+    }
+    async ytDownloadVideo(body, id, name='video'){
+        const msg = body.object.message;
+        await this.yth.pipeload(`https://www.youtube.com/watch?v=${id}`);
+        const videoAttachment = await vk.upload.messageDocument({
+            source: {
+                value: process.env.DIRECTORY+"/data/videos/video.mp4"
+            },
+            title: name,
+            peer_id: msg.peer_id,
+        });
+        const reply = {
+            peer_id: msg.peer_id,
+            message: 'Готово!',
+            attachment: videoAttachment.toString(),
+            random_id: Date.now()
+        }
+        return {reply};
     }
 
     async handleMessage(body){
-	//console.log(2)
         const msg = body.object.message;
         const payload = msg.payload?JSON.parse(msg.payload):null;
         const user = saver.getUserByIdSync(msg.peer_id);
@@ -211,12 +240,11 @@ class VKHandler{
             label: '🎵 Музыка',
         }).inline(false) // false - обычная клавиатура (всегда видна)
         .toString();
-        console.log(payload);
         if(msg.text=="Клава"){
             const reply = {
                 peer_id: msg.peer_id,
                 message: `Привет! Пока что я отвечаю только стандартным текстом. ${msg.from_id}`,
-                random_id: Math.floor(Math.random() * 1000000), 
+                random_id: Date.now(), 
                 keyboard: kb
             }
             return reply;
@@ -245,16 +273,22 @@ class VKHandler{
             const reply = await this.ytExecuteGet(body, user.item);
             return reply;
         }
+        else if(payload?.command=="ytDownloadVideo"){
+            const reply = await this.ytDownloadVideo(body, user.ytVideoID);
+            return reply;
+        }
+        else if(payload?.command==""){
+
+        }
         else{
-	    //console.log(4)
             const reply = {
                 peer_id: msg.peer_id,
                 message: `Привет! Пока что я отвечаю только стандартным текстом. ${msg.from_id}`,
-                random_id: Math.floor(Math.random() * 1000000), 
+                random_id: Date.now(), 
                 /* keyboard: kb */
             }
-	    //console.log(5);
-            return reply;
+            throw new Error("Такая функция пока что недоступна");
+            //return reply;
         }
     }
 }

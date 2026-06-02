@@ -1,8 +1,14 @@
 function extractID(string_url, type='video'){
-    const url = 
+    let url;
+    try{
+        url = 
         new URL(string_url).host.split('.')[0]=="vk"?
-        new URL(new URL(string_url).searchParams.get('to')).searchParams.get('v'):
+        new URL(new URL(string_url).searchParams.get('to')):
         new URL(string_url);
+    }
+    catch(e){
+        throw new Error("Некорректная ссылка")
+    }
     if(type=="video"){
         if(url.host=="youtu.be"){
             return url.pathname.slice(1);
@@ -23,6 +29,7 @@ function extractID(string_url, type='video'){
                 return url.slice(2);
             else return null;
         }
+        else throw new Error("Некорректная ссылка");
     }
 }
 module.exports = {extractID}
