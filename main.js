@@ -9,7 +9,7 @@ const { createWriteStream } = require('fs');
 const express = require('express')
 const app = express();
 const port = 3000;
-const { YTHandler, VKHandler } = require(process.env.DIRECTORY+'/src/Handler.js')
+const { YTHandler, VKHandler } = require('./src/Handler.js')
 const yth = new YTHandler();
 const vkh = new VKHandler();
 const {VK} = require('vk-io')
@@ -17,6 +17,7 @@ const vk = new VK({ token: process.env.VK_TOKEN });
 const {User}=require(process.env.DIRECTORY+"/src/User.js")
 const {DataSaver} = require(process.env.DIRECTORY+"/src/DataSaver.js")
 const saver = new DataSaver();
+const {sendMessages} = require('./utils/SendMessages')
 
 const youtube = require('googleapis').google.youtube({
     version: 'v3',
@@ -26,25 +27,34 @@ const youtube = require('googleapis').google.youtube({
 app.use(express.json());
 
 app.get('/', (req, res)=>{
-  res.send("<h1 style='color: red'>Пошел нахуй</h1>")
+  res.send("<h1 style='color: red'>Ok</h1>")
 })
 
 app.post('/vk/callback', (req, res)=>{
-  if(req.body.type=="confirmation" && req.body.group_id==238469614)
-    res.send("af4e92c9")
+  if(req.body.type=="confirmation" && req.body.group_id==239299529)
+    res.send("21e50ba2")
   if(req.body.type === 'message_new') {
+    res.send('ok');
     console.log("Текст: "+req.body.object.message.text)
     vkh.handleMessage(req.body)
     .then(r=>{
       if(r.user) saver.createUserSync(r.user);
-      vk.api.messages.send(r.reply)
-      .catch(e=>vk.api.messages.send(vkh.reportError("Некорректные данные", req.body.object.message.peer_id)))
+      if(Array.isArray(r.reply)){
+        sendMessages(r.reply)
+        .catch(e=>vk.api.messages.send(
+          vkh.reportError("ъуъу "+e.message, req.body.object.message.peer_id, e.stack)
+        ))
+      } else {
+        vk.api.messages.send(r.reply)
+        .catch(e=>vk.api.messages.send(
+          vkh.reportError("ъуъ "+e.message, req.body.object.message.peer_id, e.stack)
+        ))
+      }
     })
     .catch(e=>{
-      vk.api.messages.send(vkh.reportError(e.message, req.body.object.message.peer_id));
+      vk.api.messages.send(vkh.reportError(e.message, req.body.object.message.peer_id, e.stack));
       //throw e;
     });
-    res.send('ok');
   }
 })
 
@@ -52,7 +62,7 @@ app.get('/download', (req, res)=>{
   yth.download('https://youtu.be/fdvof0iRJf8?si=JghsviFD6bMsUcP3')
   .then(resp=>{
     console.log(resp)
-    res.send("<h1 style='color: red'>Пошел нахуй download</h1>")
+    res.send("<h1 style='color: red'>Ok download</h1>")
   })
 })
 
@@ -60,12 +70,12 @@ app.get('/pipeload', async (req, res)=>{
   yth.pipeload('https://youtu.be/fdvof0iRJf8?si=JghsviFD6bMsUcP3')
   .then(resp=>{
     console.log(resp)
-    res.send("<h1 style='color: red'>Пошел нахуй pipeload</h1>")
+    res.send("<h1 style='color: red'>Ok pipeload</h1>")
   })
 })
 
 app.get('/list', (req, res)=>{
-  yth.getList("Жмиль", 3, "channel").then(data=>console.log(data) || res.json(data))
+  yth.getList("Cheesecake", 3, "video").then(data=>console.log(data) || res.json(data))
 })
 
 app.get('/info', (req, res)=>{

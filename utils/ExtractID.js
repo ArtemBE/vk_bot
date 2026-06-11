@@ -7,7 +7,8 @@ function extractID(string_url, type='video'){
         new URL(string_url);
     }
     catch(e){
-        throw new Error("Некорректная ссылка")
+        e.message = "Некорректная ссылка";
+        throw e;
     }
     if(type=="video"){
         if(url.host=="youtu.be"){
